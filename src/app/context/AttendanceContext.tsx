@@ -50,7 +50,10 @@ export function AttendanceProvider({ children }: { children: ReactNode }) {
 
     try {
       const token = sessionStorage.getItem("mcc_token");
-      if (!token) return;
+      if (!token) {
+        setIsLoading(false);
+        return;
+      }
 
       const endpoint = user.role === "admin" ? "/attendance?limit=10000" : "/attendance/my?limit=10000";
       const res = await fetch(`${API_URL}${endpoint}`, {

@@ -7,6 +7,7 @@ import {
   FileText,
   Users,
   BarChart3,
+  ClipboardList,
   LogOut,
   Menu,
   X,
@@ -42,6 +43,7 @@ export function Root() {
     { path: "/admin", icon: LayoutDashboard, label: "Dashboard Admin" },
     { path: "/admin/employees", icon: Users, label: "Kelola Karyawan" },
     { path: "/admin/reports", icon: BarChart3, label: "Laporan & Export" },
+    { path: "/admin/logs", icon: ClipboardList, label: "Log Aktivitas" },
     { path: "/", icon: ClockIcon, label: "Portal Karyawan" },
   ];
 

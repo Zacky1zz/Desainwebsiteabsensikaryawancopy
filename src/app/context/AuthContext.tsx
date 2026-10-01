@@ -71,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const data = await res.json();
         const { accessToken, user: u } = data.data;
         sessionStorage.setItem("mcc_token", accessToken);
-        setUser({
+        const authenticatedUser: User = {
           id: u.id,
           email: u.email,
           role: u.role === "admin" ? "admin" : "karyawan",
@@ -79,7 +79,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           department: u.employee?.department || "Manajemen",
           position: u.employee?.position || "Administrator",
           avatar: u.employee?.avatarUrl || undefined,
-        });
+        };
+        sessionStorage.removeItem("mcc_demo_user");
+        sessionStorage.setItem("mcc_user", JSON.stringify(authenticatedUser));
+        setUser(authenticatedUser);
         return true;
       }
       return false;
@@ -92,6 +95,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null);
     sessionStorage.removeItem("mcc_token");
+    sessionStorage.removeItem("mcc_demo_user");
+    sessionStorage.removeItem("mcc_user");
   };
 
   return (

@@ -6,6 +6,7 @@ import { AttendanceHistory } from "./pages/AttendanceHistory";
 import { AdminDashboard } from "./pages/AdminDashboard";
 import { AdminEmployees } from "./pages/AdminEmployees";
 import { AdminReports } from "./pages/AdminReports";
+import { AdminLogs } from "./pages/AdminLogs";
 import { NotFound } from "./pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -22,6 +23,7 @@ export const router = createBrowserRouter([
       { path: "admin", Component: AdminDashboard },
       { path: "admin/employees", Component: AdminEmployees },
       { path: "admin/reports", Component: AdminReports },
+      { path: "admin/logs", Component: AdminLogs },
       { path: "*", Component: NotFound },
     ],
   },
