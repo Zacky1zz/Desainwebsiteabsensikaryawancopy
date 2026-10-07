@@ -1,17 +1,24 @@
 import { useState } from "react";
 import { useNavigate, Navigate } from "react-router";
-import { useAuth } from "../context/AuthContext";
-import { Eye, EyeOff, Building2, Lock, Mail, AlertCircle, KeyRound } from "lucide-react";
+import { useAuth, type UserRole } from "../context/AuthContext";
+import { Eye, EyeOff, Building2, Lock, Mail, AlertCircle, KeyRound, UserRound } from "lucide-react";
 
 const BG_IMAGE = "https://images.unsplash.com/photo-1632012993419-e2341a8a656e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxNYWxhbmclMjBjcmVhdGl2ZSUyMGNlbnRlciUyMG1vZGVybiUyMGJ1aWxkaW5nfGVufDF8fHx8MTc3NjIzOTg3OHww&ixlib=rb-4.1.0&q=80&w=1080";
 const viteEnv = (import.meta as ImportMeta & { env: { VITE_API_URL?: string; DEV: boolean } }).env;
 const API_URL = viteEnv.VITE_API_URL || "http://localhost:5000/api/v1";
 
 export function LoginPage() {
-  const { login, isAuthenticated, user, isLoading } = useAuth();
+  const { login, register, isAuthenticated, user, isLoading } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<UserRole>("karyawan");
+  const [department, setDepartment] = useState("Kreatif");
+  const [position, setPosition] = useState("");
+  const [phone, setPhone] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -41,6 +48,38 @@ export function LoginPage() {
       navigate(savedUser.role === "admin" ? "/admin" : "/");
     } else {
       setError("Email atau password salah. Silakan coba lagi.");
+    }
+  };
+
+  const handleRegisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    if (password.length < 8) {
+      setError("Password minimal 8 karakter.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Konfirmasi password tidak sama.");
+      return;
+    }
+
+    setLoading(true);
+    const result = await register({
+      role,
+      fullName,
+      email,
+      password,
+      department,
+      position,
+      phone,
+      inviteCode,
+    });
+    setLoading(false);
+    if (result.success) {
+      navigate(role === "admin" ? "/admin" : "/");
+    } else {
+      setError(result.message);
     }
   };
 
@@ -108,11 +147,13 @@ export function LoginPage() {
     }
   };
 
-  const handleFormSubmit = forgotStep === "login"
-    ? handleSubmit
-    : forgotStep === "request"
-      ? handleForgotSubmit
-      : handleResetSubmit;
+  const handleFormSubmit = isRegistering
+    ? handleRegisterSubmit
+    : forgotStep === "login"
+      ? handleSubmit
+      : forgotStep === "request"
+        ? handleForgotSubmit
+        : handleResetSubmit;
 
   const fillAdmin = () => { setEmail("admin@mcc.id"); setPassword("admin123"); setError(""); };
   const fillEmployee = () => { setEmail("budi@mcc.id"); setPassword("karyawan123"); setError(""); };
@@ -173,17 +214,106 @@ export function LoginPage() {
 
           <div className="bg-white rounded-2xl shadow-xl p-8">
             <h1 className="text-2xl font-bold text-gray-800 mb-1">
-              {forgotStep === "login" ? "Selamat Datang" : forgotStep === "request" ? "Lupa Password" : "Buat Password Baru"}
+              {isRegistering
+                ? "Buat Akun"
+                : forgotStep === "login"
+                  ? "Selamat Datang"
+                  : forgotStep === "request"
+                    ? "Lupa Password"
+                    : "Buat Password Baru"}
             </h1>
             <p className="text-gray-500 text-sm mb-6">
-              {forgotStep === "login"
-                ? "Masuk ke akun Anda untuk mulai absensi"
-                : forgotStep === "request"
-                  ? "Masukkan email akun yang ingin dipulihkan"
-                  : "Gunakan password baru minimal 8 karakter"}
+              {isRegistering
+                ? "Daftarkan akun admin atau karyawan MCC"
+                : forgotStep === "login"
+                  ? "Masuk ke akun Anda untuk mulai absensi"
+                  : forgotStep === "request"
+                    ? "Masukkan email akun yang ingin dipulihkan"
+                    : "Gunakan password baru minimal 8 karakter"}
             </p>
 
             <form onSubmit={handleFormSubmit} className="space-y-4">
+              {isRegistering && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Nama lengkap</label>
+                    <div className="relative">
+                      <UserRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
+                        autoComplete="name"
+                        required
+                        className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263] transition-all"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Daftar sebagai</label>
+                    <select
+                      value={role}
+                      onChange={(e) => setRole(e.target.value as UserRole)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263]"
+                    >
+                      <option value="karyawan">Karyawan</option>
+                      <option value="admin">Admin (memerlukan kode undangan)</option>
+                    </select>
+                  </div>
+                  {role === "karyawan" ? (
+                    <>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Departemen</label>
+                        <select
+                          value={department}
+                          onChange={(e) => setDepartment(e.target.value)}
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263]"
+                        >
+                          {["Manajemen", "Kreatif", "Event", "IT", "Marketing", "Keuangan", "Operasional"].map((item) => (
+                            <option key={item} value={item}>{item}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Posisi</label>
+                        <input
+                          type="text"
+                          value={position}
+                          onChange={(e) => setPosition(e.target.value)}
+                          required
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">Nomor telepon (opsional)</label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          autoComplete="tel"
+                          className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263]"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Kode undangan admin</label>
+                      <div className="relative">
+                        <KeyRound className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="password"
+                          value={inviteCode}
+                          onChange={(e) => setInviteCode(e.target.value)}
+                          autoComplete="off"
+                          required
+                          className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263]"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
               {/* Email */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -203,10 +333,12 @@ export function LoginPage() {
               </div>
 
               {/* Password */}
-              {forgotStep === "login" && (
+              {(isRegistering || forgotStep === "login") && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1.5">Password</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                      {isRegistering ? "Password (minimal 8 karakter)" : "Password"}
+                    </label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -214,6 +346,8 @@ export function LoginPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         placeholder="••••••••"
+                        minLength={isRegistering ? 8 : undefined}
+                        autoComplete={isRegistering ? "new-password" : "current-password"}
                         required
                         className="w-full pl-10 pr-12 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263] transition-all"
                       />
@@ -227,15 +361,30 @@ export function LoginPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="text-right -mt-2">
-                    <button
-                      type="button"
-                      onClick={() => { setForgotStep("request"); setError(""); setNotice(""); }}
-                      className="text-sm font-medium text-[#1e3263] hover:underline"
-                    >
-                      Lupa password?
-                    </button>
-                  </div>
+                  {isRegistering ? (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1.5">Konfirmasi password</label>
+                      <input
+                        type="password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        autoComplete="new-password"
+                        minLength={8}
+                        required
+                        className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3263]/30 focus:border-[#1e3263]"
+                      />
+                    </div>
+                  ) : (
+                    <div className="text-right -mt-2">
+                      <button
+                        type="button"
+                        onClick={() => { setForgotStep("request"); setError(""); setNotice(""); }}
+                        className="text-sm font-medium text-[#1e3263] hover:underline"
+                      >
+                        Lupa password?
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -302,12 +451,32 @@ export function LoginPage() {
                     Memproses...
                   </>
                 ) : (
-                  forgotStep === "login" ? "Masuk" : forgotStep === "request" ? "Kirim instruksi reset" : "Simpan password baru"
+                  isRegistering
+                    ? "Daftar"
+                    : forgotStep === "login"
+                      ? "Masuk"
+                      : forgotStep === "request"
+                        ? "Kirim instruksi reset"
+                        : "Simpan password baru"
                 )}
               </button>
             </form>
 
-            {forgotStep !== "login" && (
+            {isRegistering ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegistering(false);
+                  setPassword("");
+                  setConfirmPassword("");
+                  setError("");
+                  setNotice("");
+                }}
+                className="mt-4 w-full text-sm font-medium text-gray-500 hover:text-[#1e3263]"
+              >
+                Sudah punya akun? Masuk
+              </button>
+            ) : forgotStep !== "login" ? (
               <button
                 type="button"
                 onClick={() => { setForgotStep("login"); setError(""); setNotice(""); }}
@@ -315,9 +484,21 @@ export function LoginPage() {
               >
                 Kembali ke login
               </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRegistering(true);
+                  setError("");
+                  setNotice("");
+                }}
+                className="mt-4 w-full text-sm font-medium text-[#1e3263] hover:underline"
+              >
+                Belum punya akun? Daftar sekarang
+              </button>
             )}
 
-            {forgotStep === "login" && viteEnv.DEV && (
+            {!isRegistering && forgotStep === "login" && viteEnv.DEV && (
               <div className="mt-6 border-t border-gray-100 pt-5">
                 <p className="text-xs text-gray-400 text-center mb-3">Akun Demo</p>
                 <div className="grid grid-cols-2 gap-2">

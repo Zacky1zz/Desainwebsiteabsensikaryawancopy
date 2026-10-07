@@ -9,6 +9,7 @@ const API_PREFIX = "/api/v1";
 const CORS_ORIGIN = process.env.CORS_ORIGIN || "*";
 const DATA_PATH = process.env.DATA_PATH || join(dirname(fileURLToPath(import.meta.url)), "data.json");
 const JWT_SECRET = process.env.JWT_SECRET || "mcc-absensi-development-secret-change-before-deploy";
+const ADMIN_REGISTRATION_CODE = process.env.ADMIN_REGISTRATION_CODE;
 const TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
 const PASSWORD_RESET_TTL_MS = 15 * 60 * 1000;
 const passwordResetTokens = new Map();
@@ -114,12 +115,18 @@ const employeePayload = (employee) => {
   };
 };
 
-const profilePayload = (user) => ({
-  id: user.id,
-  email: user.email,
-  role: { name: user.role },
-  employee: employeeForUser(user),
-});
+const profilePayload = (user) => {
+  const employee = employeeForUser(user);
+  return {
+    id: user.id,
+    email: user.email,
+    role: { name: user.role },
+    name: employee?.fullName || user.name || null,
+    department: employee?.department || user.department || null,
+    position: employee?.position || user.position || null,
+    employee,
+  };
+};
 
 const signToken = (user) => {
   const payload = Buffer.from(JSON.stringify({
@@ -234,6 +241,73 @@ const server = createServer(async (request, response) => {
       const user = store.users.find((entry) => entry.email.toLowerCase() === email && entry.isActive);
       if (!user || !verifyPassword(password, user.passwordHash)) throw new HttpError(401, "Email atau password salah");
       sendJson(response, 200, { data: { accessToken: signToken(user), user: { ...profilePayload(user), role: user.role } } });
+      return;
+    }
+
+    if (request.method === "POST" && path === `${API_PREFIX}/auth/register`) {
+      const body = await readJson(request);
+      const role = body.role;
+      if (!["admin", "karyawan"].includes(role)) throw new HttpError(400, "Peran pendaftaran tidak valid");
+
+      if (role === "admin") {
+        if (!ADMIN_REGISTRATION_CODE) throw new HttpError(503, "Pendaftaran admin belum dikonfigurasi");
+        const submittedCode = typeof body.inviteCode === "string" ? Buffer.from(body.inviteCode) : Buffer.alloc(0);
+        const expectedCode = Buffer.from(ADMIN_REGISTRATION_CODE);
+        if (
+          submittedCode.length !== expectedCode.length ||
+          !timingSafeEqual(submittedCode, expectedCode)
+        ) {
+          throw new HttpError(403, "Kode undangan admin tidak valid");
+        }
+      }
+
+      const email = requireText(body.email, "Email").toLowerCase();
+      const password = requireText(body.password, "Password");
+      const fullName = requireText(body.fullName, "Nama lengkap");
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new HttpError(400, "Email tidak valid");
+      if (password.length < 8) throw new HttpError(400, "Password minimal 8 karakter");
+      if (store.users.some((entry) => entry.email.toLowerCase() === email)) {
+        throw new HttpError(409, "Email sudah digunakan");
+      }
+
+      const user = {
+        id: randomUUID(),
+        email,
+        passwordHash: hashPassword(password),
+        role,
+        isActive: true,
+        employeeId: null,
+        name: fullName,
+        department: role === "admin" ? "Manajemen" : requireText(body.department, "Departemen"),
+        position: role === "admin" ? "Administrator" : requireText(body.position, "Posisi"),
+      };
+
+      if (role === "karyawan") {
+        const employeeId = randomUUID();
+        let employeeCode;
+        do {
+          employeeCode = `MCC${randomBytes(4).toString("hex").toUpperCase()}`;
+        } while (store.employees.some((employee) => employee.employeeCode === employeeCode));
+
+        user.employeeId = employeeId;
+        store.employees.push({
+          id: employeeId,
+          userId: user.id,
+          employeeCode,
+          fullName,
+          department: user.department,
+          position: user.position,
+          phone: typeof body.phone === "string" && body.phone.trim() ? body.phone.trim() : "-",
+          joinDate: new Date().toISOString(),
+          avatarUrl: null,
+        });
+      }
+
+      store.users.push(user);
+      await saveStore();
+      sendJson(response, 201, {
+        data: { accessToken: signToken(user), user: { ...profilePayload(user), role: user.role } },
+      });
       return;
     }
 
