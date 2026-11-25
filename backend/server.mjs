@@ -2,7 +2,7 @@ import { createHmac, randomBytes, randomUUID, scryptSync, timingSafeEqual } from
 import { createServer } from "node:http";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const PORT = Number(process.env.PORT || 5000);
 const API_PREFIX = "/api/v1";
@@ -137,7 +137,7 @@ const signToken = (user) => {
   return `${payload}.${signature}`;
 };
 
-const getAuthenticatedUser = (request) => {
+export const getAuthenticatedUser = (request) => {
   const authorization = request.headers.authorization || "";
   const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
   const [payload, signature] = token.split(".");
@@ -548,6 +548,8 @@ const server = createServer(async (request, response) => {
   }
 });
 
-server.listen(PORT, "0.0.0.0", () => {
-  console.log(`MCC Absensi API berjalan di http://localhost:${PORT}${API_PREFIX}`);
-});
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`MCC Absensi API berjalan di http://localhost:${PORT}${API_PREFIX}`);
+  });
+}

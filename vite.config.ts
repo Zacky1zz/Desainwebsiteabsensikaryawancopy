@@ -40,7 +40,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['src/app/context/AuthContext.tsx'],
+      include: ['backend/server.mjs'],
     },
   },
 })
