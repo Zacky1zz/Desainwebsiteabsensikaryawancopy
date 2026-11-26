@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { useAttendance } from "../context/AttendanceContext";
 import {
+  createAttendanceCsv,
+  filterReportRecords,
+  groupRecordsByEmployee,
+  summarizeEmployeeRecords,
+} from "../utils/reportUtils";
+import {
   Download,
   FileText,
   BarChart3,
@@ -40,31 +46,9 @@ export function AdminReports() {
   const [filterMonth, setFilterMonth] = useState(new Date().toISOString().slice(0, 7));
   const [exportSuccess, setExportSuccess] = useState("");
 
-  const filtered = records.filter((r) => {
-    const matchDept = filterDept === "all" || r.department === filterDept;
-    const matchMonth = r.date.startsWith(filterMonth);
-    return matchDept && matchMonth;
-  });
-
-  // Group by employee
-  const byEmployee = filtered.reduce<Record<string, typeof filtered>>((acc, r) => {
-    if (!acc[r.userId]) acc[r.userId] = [];
-    acc[r.userId].push(r);
-    return acc;
-  }, {});
-
-  const employeeSummary = Object.entries(byEmployee).map(([userId, recs]) => {
-    const name = recs[0].userName;
-    const dept = recs[0].department;
-    const pos = recs[0].position;
-    const hadir = recs.filter((r) => r.status === "hadir").length;
-    const terlambat = recs.filter((r) => r.status === "terlambat").length;
-    const izin = recs.filter((r) => r.status === "izin").length;
-    const sakit = recs.filter((r) => r.status === "sakit").length;
-    const alpha = recs.filter((r) => r.status === "alpha").length;
-    const totalHours = recs.reduce((acc, r) => acc + (r.workHours || 0), 0);
-    return { userId, name, dept, pos, hadir, terlambat, izin, sakit, alpha, totalHours, total: recs.length };
-  });
+  const filtered = filterReportRecords(records, filterDept, filterMonth);
+  const byEmployee = groupRecordsByEmployee(filtered);
+  const employeeSummary = summarizeEmployeeRecords(filtered);
 
   // Daily trend for the month
   const daysInMonth = new Date(parseInt(filterMonth.split("-")[0]), parseInt(filterMonth.split("-")[1]), 0).getDate();
@@ -101,11 +85,7 @@ export function AdminReports() {
 
   const handleExport = (type: string) => {
     if (type === "Excel (.xlsx)") {
-      const headers = ["Nama,Departemen,Posisi,Tanggal,Check In,Check Out,Status,Total Jam Kerja"];
-      const rows = filtered.map(r => 
-        `"${r.userName}","${r.department}","${r.position}","${r.date}","${r.checkIn || "-"}","${r.checkOut || "-"}","${r.status}","${r.workHours || 0}"`
-      );
-      const csvContent = "data:text/csv;charset=utf-8," + headers.concat(rows).join("\n");
+      const csvContent = "data:text/csv;charset=utf-8," + encodeURIComponent(createAttendanceCsv(filtered));
       const encodedUri = encodeURI(csvContent);
       const link = document.createElement("a");
       link.setAttribute("href", encodedUri);

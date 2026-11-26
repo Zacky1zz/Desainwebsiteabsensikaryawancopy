@@ -40,7 +40,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['backend/server.mjs'],
+      include: ['backend/server.mjs', 'src/app/utils/reportUtils.ts'],
     },
   },
 })

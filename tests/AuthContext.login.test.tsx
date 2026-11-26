@@ -49,13 +49,11 @@ describe("AuthProvider - login()", () => {
   beforeEach(() => {
     sessionStorage.clear();
 
-    // TEST DOUBLE 1: STUB
-    // Memberikan respons API yang sudah ditentukan tanpa menghubungi server sungguhan.
+    
     fetchStub = vi.fn();
     vi.stubGlobal("fetch", fetchStub);
 
-    // TEST DOUBLE 2: SPY
-    // Memantau pemanggilan setItem sambil tetap menjalankan implementasi aslinya.
+    
     setItemSpy = vi.spyOn(Storage.prototype, "setItem");
   });
 
